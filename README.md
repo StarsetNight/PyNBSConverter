@@ -1,6 +1,6 @@
 # PyNBSConverter
 ## 开发说明 DEVELOPING INSTRUCTIONS
-我马上就要建一个`AdvancedDev`分支，以后我的最新改动都写在这条分支里。  
+我马上就要建一个`dev-Advanced_Killer`分支，以后我的最新改动都写在这条分支里。  
 本项目基于`pynbs`和`xlwings`前置Python库。  
 ## 介绍 INTRODUCE
 众所周知，将传统的Minecraft Noteblock Studio（后文用“NBS”代替）工程转为 **“第四代编码格式”** 是一件吃力不讨好的事情，于是，本人便开发了这款全自动转译脚本。  
