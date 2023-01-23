@@ -1,9 +1,11 @@
 import pynbs
 import xlwings as xw
 
-note_list: dict[int, list[pynbs.Note]] = {}  # 该字典是整首曲子的音符表，第一层是列，第二层是列里面的音符
+note_list: dict[int, list[pynbs.Note]] = {}  # 该字典是整首曲子的编码表，第一层是列，第二层是列里面的编码
+latest_notes: dict[int, list[int]] = {}  # 该字典是最近4个tick的音符
 tick_length: int = 0
-fail_ticks: list[int] = []  # 超轨道的Tick
+out_ticks: list[int] = []  # 超轨道的Tick
+fast_ticks: list[int] = []  # 小于4gt响应的Tick
 
 
 def getRange(excel: xw.Book, x: int, y: int) -> xw.Range:
@@ -53,14 +55,28 @@ def parse(excel: xw.Book, tick: int, row: list[pynbs.Note], max_layer: int):
     """
     global tick_length
 
-    linec = len(row) + 1  # 加一是因为还有执行编码，实际占用的tick为8倍linec
-    keyv = [note.key for note in row]  # 本列的纯音符音高列表
+    linec: int = len(row) + 1  # 加一是因为还有执行编码，实际占用的tick为8倍linec
+    keyv: list[int] = [note.key for note in row]  # 本列的纯音符音高列表
+    keyv: list[int] = sorted(set(keyv), key=keyv.index)
     print(f"\033[1;32;40m[SESSION]\033[0m ({tick}/{tick_length})本列共需用{linec}个编码，编码后占用{linec*8}gt。")
+
+    latest_notes[tick] = keyv
+    latest_tick: int = list(latest_notes)[-1]
+    latest_keys: list[int] = []
+    for note in list(latest_notes):  # tick筛选
+        if latest_tick - note > 4:
+            latest_notes.pop(note)  # 如果tick相差超过4，则剔除
+    for note in latest_notes.values():  # 音高检测
+        latest_keys.extend([key for key in note])
+    if len(set(latest_keys)) < len(latest_keys):  # 说明4个gt内有重复的音高
+        print(f"\033[1;31;40m[WARNING]\033[0m Tick为{latest_tick}的编码播放了间隔小于4gt的同一音符，音符盒将无法响应此播放。")
+        fast_ticks.append(latest_tick)
+
     for layer in range(max_layer * 8):
         if layer >= max_layer:  # 最多max_layer层编码器，不能多了
             print(f"\033[1;31;40m[WARNING]\033[0m Tick为{tick}的编码超出了{max_layer}层，正在使用第{layer}层。")
-            if tick not in fail_ticks:
-                fail_ticks.append(tick)
+            if tick not in out_ticks:
+                out_ticks.append(tick)
         if detectLayer(linec, layer):  # 如果这层放得下编码
             delay = tick % 8  # 由于每个编码必须间隔8gt，所以应当有延迟
             tick -= delay  # 先减去延迟
@@ -114,7 +130,8 @@ def process(in_file: str, out_file: str, max_layer: int):
         parse(wb, tick, chord, max_layer)
     wb.save(out_file)
     print(f"\033[1;32;40m[SUCCESS]\033[0m 编码文件已成功写入{out_file}。")
-    print(f"\033[1;33;40m[MESSAGE]\033[0m 最大使用层数为{wb.sheets['Process'].used_range.last_cell.row}，超出24轨的Tick如下：{fail_ticks}")
+    print(f"\033[1;33;40m[MESSAGE]\033[0m 最大使用层数为{wb.sheets['Process'].used_range.last_cell.row}，"
+          f"超出24轨的Tick如下：{out_ticks}，小于4gt的同音符Tick如下：{fast_ticks}。")
     wb.close()
     app.quit()
 
