@@ -12,7 +12,7 @@ out_ticks: list[int] = []  # 超轨道的Tick
 fast_ticks: list[int] = []  # 小于4gt响应的Tick
 
 
-def writeCommand(*items) -> str:
+def writeCommand(items: list[str]) -> str:
     """
     将要写入的物品制作为give指令。
     :param items: 潜影盒内的物品列表，从左上至右下，横向排列。
