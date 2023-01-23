@@ -1,11 +1,36 @@
+# coding: utf-8
 import pynbs
 import xlwings as xw
+import json
+
+from write_settings import *
 
 note_list: dict[int, list[pynbs.Note]] = {}  # 该字典是整首曲子的编码表，第一层是列，第二层是列里面的编码
 latest_notes: dict[int, list[int]] = {}  # 该字典是最近4个tick的音符
 tick_length: int = 0
 out_ticks: list[int] = []  # 超轨道的Tick
 fast_ticks: list[int] = []  # 小于4gt响应的Tick
+
+
+def writeCommand(*items) -> str:
+    """
+    将要写入的物品制作为give指令。
+    :param items: 潜影盒内的物品列表，从左上至右下，横向排列。
+    :return: /give指令
+    """
+    nbt_data: dict[str, dict[str, list]] = {
+        "BlockEntityTag":
+            {
+                "Items": []
+            }
+    }
+    for slot, item in enumerate(items):
+        nbt_data["BlockEntityTag"]["Items"].append(
+            {"Slot": slot, "id": item, "Count": 1, "tag": {"display": {"Name": note_name_table[item]}}}
+            if item in list(note_name_table) else  # 如果item存在于命名表中，则命名，否则默认
+            {"Slot": slot, "id": item, "Count": 1}
+        )
+    return f"/give @s shulker_box{json.dumps(nbt_data)}"
 
 
 def getRange(excel: xw.Book, x: int, y: int) -> xw.Range:
@@ -92,7 +117,7 @@ def parse(excel: xw.Book, tick: int, row: list[pynbs.Note], max_layer: int):
             else:  # 填充绿色的有延迟执行编码
                 for note_delay in range(delay):  # 逐渐往后填充1个gt的绿色编码
                     note_list[tick].append(pynbs.Note(tick=tick + note_delay, layer=layer, instrument=1, key=23))
-                    getRange(excel, tick + note_delay + 1, layer + 1).value = "#"
+                    getRange(excel, tick + note_delay + 1, layer + 1).value = "#" * delay
                     getRange(excel, tick + note_delay + 1, layer + 1).color = (64, 255, 64)
             for key in reversed(keyv):
                 tick -= 8
@@ -102,7 +127,7 @@ def parse(excel: xw.Book, tick: int, row: list[pynbs.Note], max_layer: int):
                     note_list[tick] = []
                 # 填充声明的音符编码
                 note_list[tick].append(pynbs.Note(tick=tick, layer=layer, instrument=0, key=key))
-                getRange(excel, tick + 1, layer + 1).value = f"!{key - 24}"
+                getRange(excel, tick + 1, layer + 1).value = f"!{key - 33}"  # 得到的key实质上是音高+33
                 getRange(excel, tick + 1, layer + 1).color = (128, 128, 255)
             break
 
@@ -128,10 +153,37 @@ def process(in_file: str, out_file: str, max_layer: int):
     for tick, chord in core_song:
         # note_list[tick] = chord
         parse(wb, tick, chord, max_layer)
-    wb.save(out_file)
-    print(f"\033[1;32;40m[SUCCESS]\033[0m 编码文件已成功写入{out_file}。")
+    wb.save(out_file + "-after.xlsx")
+    print(f"\033[1;32;40m[SUCCESS]\033[0m 编码文件已成功写入{out_file}-after.xlsx。")
     print(f"\033[1;33;40m[MESSAGE]\033[0m 最大使用层数为{wb.sheets['Process'].used_range.last_cell.row}，"
           f"超出24轨的Tick如下：{out_ticks}，小于4gt的同音符Tick如下：{fast_ticks}。")
+    choice: str = input("是否要将潜影盒装填写入至/give命令列表[y/N]：")
+    if choice == "y":
+        with open(out_file + "-after-command.txt", "w+", encoding="utf-8") as command_file:
+            item_count: int = 0  # 用于潜影盒27格计数
+            item_list: list[str] = []  # 用于存储潜影盒27格物品
+            for y in range(1, wb.sheets['Process'].used_range.last_cell.row + 1):  # y的值在1到最大使用层数之间
+                print(f"\033[1;33;40m[SESSION]\033[0m 正在处理第{y}层的潜影盒装填……")
+                for x in range(1, tick_length + 1, 8):  # x的值在1到歌曲长度（tick）之间
+                    if getRange(wb, x, y).value:
+                        match getRange(wb, x, y).value[0]:
+                            case "!":  # 音符声明
+                                item_list.append(
+                                    list(note_name_table)  # 将note_name_table转换为键列表
+                                    [int(getRange(wb, x, y).value[1:])]  # 找到对应键
+                                )
+                            case "@":  # 无延迟执行
+                                item_list.append("purple_carpet")
+                            case "#":
+                                item_list.append(executer_name_table[len(getRange(wb, x, y).value) - 1])
+                    else:
+                        item_list.append("oak_fence")
+                    item_count += 1
+                    if item_count == 27:
+                        command_file.write(writeCommand(item_list) + "\n\n")
+                        item_list.clear()
+                        item_count = 0
+    print(f"\033[1;32;40m[SUCCESS]\033[0m 命令文件已成功写入{out_file}-after-command.txt。")
     wb.close()
     app.quit()
 
@@ -139,4 +191,4 @@ def process(in_file: str, out_file: str, max_layer: int):
 if __name__ == "__main__":
     file_name = input("请输入处理好的NBS文件名（不含扩展名）：")
     max_layer = int(input("请输入预期的最大编码器层数："))
-    process(file_name, file_name + "-after.xlsx", max_layer)
+    process(file_name, file_name, max_layer)
