@@ -26,7 +26,8 @@ def writeCommand(items: list[str]) -> str:
     }
     for slot, item in enumerate(items):
         nbt_data["BlockEntityTag"]["Items"].append(
-            {"Slot": slot, "id": item, "Count": 1, "tag": {"display": {"Name": note_name_table[item]}}}
+            {"Slot": slot, "id": item, "Count": 1,
+             "tag": {"display": {"Name": '[{"text":"' + note_name_table[item] + '","italic":false}]'}}}
             if item in list(note_name_table) else  # 如果item存在于命名表中，则命名，否则默认
             {"Slot": slot, "id": item, "Count": 1}
         )
@@ -60,7 +61,7 @@ def detectLayer(length: int, layer: int) -> bool:
     :param layer: 层数
     :return: 是否够空间
     """
-    ticks = [tick for tick in note_list][-length-1:]  # 预截取
+    ticks = [tick for tick in note_list][-length - 1:]  # 预截取
     for tick in ticks:
         note_row = note_list[tick]  # 代表此tick对应的列
         for note in note_row:
@@ -83,7 +84,7 @@ def parse(excel: xw.Book, tick: int, row: list[pynbs.Note], max_layer: int):
     linec: int = len(row) + 1  # 加一是因为还有执行编码，实际占用的tick为8倍linec
     keyv: list[int] = [note.key for note in row]  # 本列的纯音符音高列表
     keyv: list[int] = sorted(set(keyv), key=keyv.index)
-    print(f"\033[1;32;40m[SESSION]\033[0m ({tick}/{tick_length})本列共需用{linec}个编码，编码后占用{linec*8}gt。")
+    print(f"\033[1;32;40m[SESSION]\033[0m ({tick}/{tick_length})本列共需用{linec}个编码，编码后占用{linec * 8}gt。")
 
     latest_notes[tick] = keyv
     latest_tick: int = list(latest_notes)[-1]
@@ -164,6 +165,7 @@ def process(in_file: str, out_file: str, max_layer: int):
             item_list: list[str] = []  # 用于存储潜影盒27格物品
             for y in range(1, wb.sheets['Process'].used_range.last_cell.row + 1):  # y的值在1到最大使用层数之间
                 print(f"\033[1;33;40m[SESSION]\033[0m 正在处理第{y}层的潜影盒装填……")
+                command_file.write(f"\n\n\n第{y}层潜影盒========================================\n\n\n")
                 for x in range(1, tick_length + 1, 8):  # x的值在1到歌曲长度（tick）之间
                     if getRange(wb, x, y).value:
                         match getRange(wb, x, y).value[0]:
