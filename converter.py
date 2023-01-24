@@ -70,6 +70,19 @@ def detectLayer(length: int, layer: int) -> bool:
     return True  # 如果一直没有对应，那就能用
 
 
+def getLayerFree(layer: int, maximum_note=24) -> int:
+    """
+    检测该层有多少个可用编码空间（也就是可用gt整除8）
+    :param layer: 层数
+    :param maximum_note: 最大编码空间检测限制（如无指定默认为24个编码空间）
+    :return: 可用编码空间（编码数量）
+    """
+    for free in range(maximum_note):
+        if not detectLayer(free, layer):
+            return free - 1
+    return maximum_note
+
+
 def parse(excel: xw.Book, tick: int, row: list[pynbs.Note], max_layer: int):
     """
     处理列并转译到新文件
@@ -98,12 +111,14 @@ def parse(excel: xw.Book, tick: int, row: list[pynbs.Note], max_layer: int):
         print(f"\033[1;31;40m[WARNING]\033[0m Tick为{latest_tick}的编码播放了间隔小于4gt的同一音符，音符盒将无法响应此播放。")
         fast_ticks.append(latest_tick)
 
+    sliced_keyv: list[int] = []  # 用于在必要时进行编码切片
     for layer in range(max_layer * 8):
         if layer >= max_layer:  # 最多max_layer层编码器，不能多了
             print(f"\033[1;31;40m[WARNING]\033[0m Tick为{tick}的编码超出了{max_layer}层，正在使用第{layer}层。")
             if tick not in out_ticks:
                 out_ticks.append(tick)
-        if detectLayer(linec, layer):  # 如果这层放得下编码
+        free_space = getLayerFree(layer, linec)
+        if free_space >= linec:  # 如果这层放得下编码
             delay = tick % 8  # 由于每个编码必须间隔8gt，所以应当有延迟
             tick -= delay  # 先减去延迟
             try:  # 如果列不存在，则创建新列
@@ -113,13 +128,13 @@ def parse(excel: xw.Book, tick: int, row: list[pynbs.Note], max_layer: int):
             if not delay:  # 填充黄色的无延迟执行编码
                 note_list[tick].append(pynbs.Note(tick=tick, layer=layer, instrument=3, key=23))
                 getRange(excel, tick + 1, layer + 1).value = "@"
-                getRange(excel, tick + 1, layer + 1).color = (255, 255, 64)
+                getRange(excel, tick + 1, layer + 1).color = (255, 255, 128)
 
             else:  # 填充绿色的有延迟执行编码
                 for note_delay in range(delay):  # 逐渐往后填充1个gt的绿色编码
                     note_list[tick].append(pynbs.Note(tick=tick + note_delay, layer=layer, instrument=1, key=23))
                     getRange(excel, tick + note_delay + 1, layer + 1).value = "#" * delay
-                    getRange(excel, tick + note_delay + 1, layer + 1).color = (64, 255, 64)
+                    getRange(excel, tick + note_delay + 1, layer + 1).color = (128, 255, 128)
             for key in reversed(keyv):
                 tick -= 8
                 try:  # 如果列不存在，则创建新列
@@ -131,6 +146,36 @@ def parse(excel: xw.Book, tick: int, row: list[pynbs.Note], max_layer: int):
                 getRange(excel, tick + 1, layer + 1).value = f"!{key - 33}"  # 得到的key实质上是音高+33
                 getRange(excel, tick + 1, layer + 1).color = (128, 128, 255)
             break
+        elif free_space >= 3:  # 如果放不下，先写入一部分
+            sliced_keyv = keyv[:free_space - 1]  # 保留可以输入的编码
+            del keyv[:free_space - 1]  # 此时，便可以清除此段
+            linec -= (free_space - 1)
+            delay = tick % 8  # 由于每个编码必须间隔8gt，所以应当有延迟
+            tick -= delay  # 先减去延迟
+            try:  # 如果列不存在，则创建新列
+                note_list[tick]
+            except KeyError:
+                note_list[tick] = []
+            if not delay:  # 填充黄色的无延迟执行编码
+                note_list[tick].append(pynbs.Note(tick=tick, layer=layer, instrument=3, key=23))
+                getRange(excel, tick + 1, layer + 1).value = "@"
+                getRange(excel, tick + 1, layer + 1).color = (255, 255, 128)
+            else:  # 填充绿色的有延迟执行编码
+                for note_delay in range(delay):  # 逐渐往后填充1个gt的绿色编码
+                    note_list[tick].append(pynbs.Note(tick=tick + note_delay, layer=layer, instrument=1, key=23))
+                    getRange(excel, tick + note_delay + 1, layer + 1).value = "#" * delay
+                    getRange(excel, tick + note_delay + 1, layer + 1).color = (128, 255, 128)
+            for key in reversed(sliced_keyv):
+                tick -= 8
+                try:  # 如果列不存在，则创建新列
+                    note_list[tick]
+                except KeyError:
+                    note_list[tick] = []
+                # 填充声明的音符编码
+                note_list[tick].append(pynbs.Note(tick=tick, layer=layer, instrument=0, key=key))
+                getRange(excel, tick + 1, layer + 1).value = f"!{key - 33}"  # 得到的key实质上是音高+33
+                getRange(excel, tick + 1, layer + 1).color = (128, 128, 255)
+            sliced_keyv = []
 
 
 def process(in_file: str, out_file: str, max_layer: int):
@@ -185,7 +230,7 @@ def process(in_file: str, out_file: str, max_layer: int):
                         command_file.write(writeCommand(item_list) + "\n\n")
                         item_list.clear()
                         item_count = 0
-    print(f"\033[1;32;40m[SUCCESS]\033[0m 命令文件已成功写入{out_file}-after-command.txt。")
+        print(f"\033[1;32;40m[SUCCESS]\033[0m 命令文件已成功写入{out_file}-after-command.txt。")
     wb.close()
     app.quit()
 
