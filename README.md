@@ -1,28 +1,84 @@
 # PyNBSConverter
-## 开发说明 DEVELOPING INSTRUCTIONS
-我马上就要建一个`dev-Advanced_Killer`分支，以后我的最新改动都写在这条分支里。  
-本项目基于`pynbs`和`xlwings`前置Python库。  
-## 介绍 INTRODUCE
-众所周知，将传统的Minecraft Noteblock Studio（后文用“NBS”代替）工程转为 **“第四代编码格式”** 是一件吃力不讨好的事情，于是，本人便开发了这款全自动转译脚本。  
-目前我就写了这么些功能，以后还会继续更新的，同时，开源永远都是最好的！  
-## 注意 NOTIFY
-输入的文件需要经过预处理，处理步骤如下：  
-1. 开头的音符转换成编码肯定放不下，在NBS软件内使用`Ctrl`+`A`全选音符，并后移。  
-2. 本程序暂时无法进行更精细的编码压缩，请先尽量删除和弦轨道。  
-3. 输入的NBS文件最好为10t/s（这个没有测试如果不这样设置会不会出问题，应该没事）。  
 
-输出的文件为`.xlsx`文档，使用`WPS表格`或`Microsoft Excel`即可打开，编码代表内容如下：
-- 蓝色：普通音符，也就是要在编码器播放的音符。  
-- 黄色：无延迟的执行编码。  
-- 绿色：有延迟的执行编码，有几个就代表延迟几个gt。  
+> **⚠️ This project has been archived and is no longer maintained.**
+> 本项目已归档（Archived），不再进行功能更新或维护，仅作为历史项目与参考实现保留。
 
-## 如何构建 HOW TO BUILD
-将本项目使用Git的`git clone`命令克隆至本地，然后使用`pip install -r requirements.txt`安装所有依赖库，即可运行本程序。  
-## 下载 DOWNLOADS
-（暂无下载，源码开放下载）  
-## 贡献者名单 CONTRIBUTORS
-- Advanced_Killer: [GitHub](https://github.com/ThirdBlood) 
-[BiliBili](https://space.bilibili.com/477677552)
-## 鸣谢名单 THANKS
-（暂无鸣谢名单）  
-**Powered by Advanced_Killer**  
+---
+
+## About
+
+PyNBSConverter 是一个用于将 **Minecraft Note Block Studio（NBS）工程** 自动转换为 **第四代编码格式** 的 Python 工具。
+
+项目基于以下库开发：
+
+* `pynbs`
+* `xlwings`
+
+转换结果输出为 `.xlsx` 文件，可使用 **Microsoft Excel** 或 **WPS 表格** 打开。
+
+---
+
+## Project Status
+
+本项目已经停止开发，不再接受：
+
+* 新功能请求（Feature Requests）
+* Bug 修复
+* Pull Request
+* Issue 支持
+
+仓库将作为历史代码保留，供有需要的开发者参考或 Fork。
+
+---
+
+## Usage Notes
+
+输入的 NBS 文件建议进行以下预处理：
+
+1. 在 Note Block Studio 中按 `Ctrl + A` 全选音符，并整体向后移动，避免开头音符无法编码。
+2. 当前版本不会自动进行复杂的编码压缩，建议提前删除不必要的和弦轨道。
+3. 推荐使用 **10 t/s** 的 NBS 工程（其他速度未经完整测试）。
+
+输出为 `.xlsx` 文件，其中颜色含义如下：
+
+* **蓝色**：普通音符
+* **黄色**：无延迟执行编码
+* **绿色**：带延迟执行编码（绿色数量代表延迟的 gt 数）
+
+---
+
+## Build
+
+克隆仓库并安装依赖：
+
+```bash
+git clone <repository-url>
+cd PyNBSConverter
+pip install -r requirements.txt
+```
+
+随后即可运行程序。
+
+---
+
+## License
+
+Unless otherwise specified, this project is released under the license contained in this repository.
+
+---
+
+## Author
+
+**StarsetNight**
+
+GitHub: https://github.com/StarsetNight
+
+---
+
+## Archive Notice
+
+本项目完成了其历史使命，目前没有继续维护的计划。
+
+如果未来有人希望继续开发，请自由 Fork 本项目，并根据自己的需求进行修改。
+
+感谢所有曾经关注和使用过本项目的人。
